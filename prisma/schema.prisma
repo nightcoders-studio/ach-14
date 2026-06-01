@@ -1,0 +1,194 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================
+// 👤 Model Warga (Citizen)
+// ============================
+model Citizen {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique // Format: 628xxx (Untuk WhatsApp)
+  lorong    String   // Pembagian wilayah di Gampong
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relasi: Warga bisa membuat banyak laporan
+  reports   Report[]
+
+  @@map("citizens")
+}
+
+// ============================
+// 🚨 Model Peringatan (Alert)
+// ============================
+model Alert {
+  id        String        @id @default(uuid())
+  title     String
+  message   String
+  source    AlertSource   // "BMKG" atau "GEUCHIK"
+  severity  AlertSeverity // "INFO", "WARNING", "CRITICAL"
+  createdAt DateTime      @default(now())
+
+  // Relasi: Peringatan memiliki log broadcast
+  logs      AlertLog[]
+
+  @@map("alerts")
+}
+
+// ============================
+// 📋 Model Laporan Warga (Report)
+// ============================
+model Report {
+  id          String       @id @default(uuid())
+  type        ReportType   // Jenis laporan: KEBAKARAN, LISTRIK, KEAMANAN, BANJIR, LAINNYA
+  description String
+  location    String       // Lokasi kejadian
+  status      ReportStatus @default(PENDING)
+  citizenId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relasi: Laporan dimiliki oleh seorang warga
+  citizen     Citizen      @relation(fields: [citizenId], references: [id])
+
+  @@map("reports")
+}
+
+// ============================
+// 📜 Model Log Peringatan (AlertLog)
+// ============================
+model AlertLog {
+  id        String   @id @default(uuid())
+  alertId   String
+  phone     String   // Nomor WA tujuan
+  status    String   // "SENT", "FAILED", "PENDING"
+  sentAt    DateTime @default(now())
+
+  // Relasi: Log terkait dengan sebuah peringatan
+  alert     Alert    @relation(fields: [alertId], references: [id])
+
+  @@map("alert_logs")
+}
+
+// ============================
+// 🔐 Model User & Auth (Better Auth)
+// ============================
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Custom Gampong fields
+  role          UserRole  @default(ADMIN)
+
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+// ============================
+// ⚙️ Model Pengaturan Sistem (Settings)
+// ============================
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ============================
+// 📌 Enums
+// ============================
+
+enum AlertSource {
+  BMKG
+  GEUCHIK
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum ReportType {
+  KEBAKARAN
+  LISTRIK
+  KEAMANAN
+  BANJIR
+  LAINNYA
+}
+
+enum ReportStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+}
