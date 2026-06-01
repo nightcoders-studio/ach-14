@@ -28,6 +28,7 @@ export default function SidebarClient({ session, children }: { session: any, chi
     { name: "Peringatan", icon: BellRing, path: "/dashboard/alerts" },
     { name: "Laporan Warga", icon: FileText, path: "/dashboard/reports" },
     { name: "Warga", icon: Users, path: "/dashboard/citizens" },
+    { name: "Galeri PDF", icon: FileText, path: "/dashboard/documents" },
     { name: "Pengaturan", icon: Settings, path: "/dashboard/settings" },
   ];
 
