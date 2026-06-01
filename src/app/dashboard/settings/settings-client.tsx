@@ -228,7 +228,14 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
                           <CardTitle className="text-xl">Fonnte API Configuration</CardTitle>
                           <CardDescription>Gateway WhatsApp Cloud pihak ketiga yang andal.</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 border-zinc-500/30">Nonaktif</Badge>
+                        {settings["ACTIVE_WHATSAPP_PROVIDER"] === "FONNTE" ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Dipilih (Aktif)</Badge>
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 border-zinc-500/30">Nonaktif</Badge>
+                            <Button variant="outline" size="sm" onClick={() => handleSettingChange("ACTIVE_WHATSAPP_PROVIDER", "FONNTE")}>Jadikan Utama</Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -258,7 +265,14 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
                           <CardTitle className="text-xl">Evolution API (Self-Hosted)</CardTitle>
                           <CardDescription>Solusi mandiri berbasis Baileys untuk kustomisasi penuh.</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Dipilih (Aktif)</Badge>
+                        {settings["ACTIVE_WHATSAPP_PROVIDER"] === "EVOLUTION" ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Dipilih (Aktif)</Badge>
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 border-zinc-500/30">Nonaktif</Badge>
+                            <Button variant="outline" size="sm" onClick={() => handleSettingChange("ACTIVE_WHATSAPP_PROVIDER", "EVOLUTION")}>Jadikan Utama</Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -303,7 +317,14 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
                           <CardTitle className="text-xl">Waha (WhatsApp HTTP API)</CardTitle>
                           <CardDescription>Mesin session perpesanan ringan berbasis REST API.</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 border-zinc-500/30">Nonaktif</Badge>
+                        {settings["ACTIVE_WHATSAPP_PROVIDER"] === "WAHA" ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Dipilih (Aktif)</Badge>
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            <Badge variant="outline" className="bg-zinc-500/10 text-zinc-600 border-zinc-500/30">Nonaktif</Badge>
+                            <Button variant="outline" size="sm" onClick={() => handleSettingChange("ACTIVE_WHATSAPP_PROVIDER", "WAHA")}>Jadikan Utama</Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -339,7 +360,14 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
                           <CardTitle className="text-xl">WATI (Official Meta API)</CardTitle>
                           <CardDescription>Integrasi resmi Meta untuk WhatsApp Business Account (WABA).</CardDescription>
                         </div>
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Premium</Badge>
+                        {settings["ACTIVE_WHATSAPP_PROVIDER"] === "WATI" ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Dipilih (Aktif)</Badge>
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Premium</Badge>
+                            <Button variant="outline" size="sm" onClick={() => handleSettingChange("ACTIVE_WHATSAPP_PROVIDER", "WATI")}>Jadikan Utama</Button>
+                          </div>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">

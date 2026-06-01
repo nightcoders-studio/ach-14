@@ -2,10 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BellRing, ShieldAlert, FileText, CheckCircle2, AlertTriangle, ArrowUpRight, Users, MapPin, Activity } from "lucide-react";
+import { BellRing, ShieldAlert, FileText, CheckCircle2, AlertTriangle, ArrowUpRight, Users, MapPin, Activity, Cloud, Thermometer, Wind, Droplets, CloudRain, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import type { GempaInfo } from "@/app/actions/bmkg";
+import type { WeatherInfo } from "@/app/actions/weather";
 
 const stats = [
   {
@@ -53,7 +54,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-export default function DashboardClient({ bmkgData }: { bmkgData: GempaInfo | null }) {
+export default function DashboardClient({ bmkgData, weatherData }: { bmkgData: GempaInfo | null, weatherData: WeatherInfo | null }) {
   // Parsing Magnitude to float for color coding
   const magnitude = bmkgData ? parseFloat(bmkgData.Magnitude) : 0;
   const isDanger = magnitude >= 5.0;
@@ -102,9 +103,9 @@ export default function DashboardClient({ bmkgData }: { bmkgData: GempaInfo | nu
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 pt-4">
-        {/* WIDGET BMKG - Lebar Penuh di Mobile, 4 Kolom di Desktop */}
-        <motion.div variants={itemVariants} className="lg:col-span-4">
-          <Card className={`backdrop-blur-xl bg-white/60 dark:bg-zinc-900/60 border-zinc-200/50 dark:border-zinc-800/50 h-full relative overflow-hidden ${isDanger ? 'ring-2 ring-red-500' : ''}`}>
+        {/* WIDGET KIRI - BMKG & CUACA */}
+        <motion.div variants={itemVariants} className="lg:col-span-4 flex flex-col gap-4">
+          <Card className={`backdrop-blur-xl bg-white/60 dark:bg-zinc-900/60 border-zinc-200/50 dark:border-zinc-800/50 relative overflow-hidden ${isDanger ? 'ring-2 ring-red-500' : ''}`}>
             {isDanger && (
               <div className="absolute top-0 left-0 w-full h-1 bg-red-500 animate-pulse" />
             )}
@@ -153,6 +154,82 @@ export default function DashboardClient({ bmkgData }: { bmkgData: GempaInfo | nu
                 <div className="flex flex-col items-center justify-center h-48 text-zinc-500">
                   <AlertTriangle className="w-8 h-8 mb-2 opacity-50" />
                   <p>Gagal memuat data BMKG.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* WIDGET CUACA */}
+          <Card className={`backdrop-blur-xl bg-white/60 dark:bg-zinc-900/60 border-zinc-200/50 dark:border-zinc-800/50 relative overflow-hidden`}>
+            <CardHeader className="pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <CardTitle className="flex items-center justify-between text-lg">
+                <div className="flex items-center">
+                  <Cloud className="w-5 h-5 mr-2 text-blue-500" /> 
+                  Prakiraan Cuaca Hyper-Local
+                </div>
+                {weatherData && (
+                  <span className="text-xs font-normal text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full">
+                    {weatherData.villageName}
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Data real-time berdasarkan titik koordinat desa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {weatherData ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-around p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="text-center">
+                      <Thermometer className="w-6 h-6 text-orange-500 mx-auto mb-1" />
+                      <div className="text-2xl font-bold">{weatherData.temperature}°C</div>
+                      <div className="text-xs text-zinc-500">Suhu Udara</div>
+                    </div>
+                    <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="text-center">
+                      <Wind className="w-6 h-6 text-sky-500 mx-auto mb-1" />
+                      <div className="text-2xl font-bold">{weatherData.windSpeed} <span className="text-sm">km/j</span></div>
+                      <div className="text-xs text-zinc-500">Kec. Angin</div>
+                    </div>
+                    <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="text-center">
+                      <Droplets className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+                      <div className="text-2xl font-bold">{weatherData.precipitation} <span className="text-sm">mm</span></div>
+                      <div className="text-xs text-zinc-500">Curah Hujan</div>
+                    </div>
+                  </div>
+                  
+                  {/* FORECAST 3 HARI */}
+                  {weatherData.forecasts && weatherData.forecasts.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                      <p className="text-sm font-semibold mb-3">Prakiraan 3 Hari Kedepan</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {weatherData.forecasts.map((fc, i) => {
+                          const date = new Date(fc.time);
+                          const dayName = date.toLocaleDateString('id-ID', { weekday: 'short' });
+                          const isRainy = fc.weatherCode >= 51;
+                          
+                          return (
+                            <div key={i} className="flex flex-col items-center p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                              <p className="text-xs text-zinc-500 font-medium mb-1">{i === 0 ? 'Besok' : i === 1 ? 'Lusa' : dayName}</p>
+                              {isRainy ? <CloudRain className="w-5 h-5 text-blue-500 mb-1" /> : <Sun className="w-5 h-5 text-amber-500 mb-1" />}
+                              <div className="flex items-center gap-1 text-xs font-bold">
+                                <span className="text-blue-500">{Math.round(fc.tempMin)}°</span>
+                                <span className="text-zinc-300">-</span>
+                                <span className="text-orange-500">{Math.round(fc.tempMax)}°</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-32 text-zinc-500">
+                  <Cloud className="w-8 h-8 mb-2 opacity-50" />
+                  <p>Memuat data cuaca satelit...</p>
                 </div>
               )}
             </CardContent>

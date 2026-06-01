@@ -9,6 +9,6 @@ export default async function LandingPage() {
   });
 
   return (
-    <LandingClient session={sessionData?.session || null} />
+    <LandingClient session={sessionData} />
   );
 }
