@@ -11,8 +11,10 @@ WORKDIR /app
 RUN corepack enable pnpm
 
 # Install dependencies
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN pnpm i --no-frozen-lockfile
 
 # 2. Rebuild the source code only when needed
@@ -25,6 +27,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate prisma client and build the Next.js app (standalone mode)
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN pnpm prisma:generate
 RUN pnpm run build
 
