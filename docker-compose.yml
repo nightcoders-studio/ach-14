@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gampong-hub-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      # Environment variables bisa dilempar dari file .env di host
+      # atau bisa di set spesifik di bawah ini. Sangat disarankan memakai env_file
+    env_file:
+      - .env
+    networks:
+      - gampong-net
+    # depends_on:
+    #   - n8n
+    #   - evolution-api
+
+  # Layanan Cron Job Internal yang sangat ringan (Alpine)
+  cron:
+    image: alpine:latest
+    container_name: gampong-hub-cron
+    restart: unless-stopped
+    depends_on:
+      - web
+    networks:
+      - gampong-net
+    # Script ini meng-install curl, menulis crontab (setiap 15 menit), lalu menjalankan daemon crond di background
+    command: >
+      sh -c "apk add --no-cache curl &&
+      echo '*/15 * * * * curl -X POST http://web:3000/api/cron' > /var/spool/cron/crontabs/root &&
+      crond -f -l 2"
+
+  # =========================================================================
+  # OPSI INTEGRASI FULL-STACK LOCAL (UNCOMMENT JIKA INGIN DIJALANKAN LOKAL)
+  # =========================================================================
+
+  # n8n:
+  #   image: docker.n8n.io/n8nio/n8n
+  #   container_name: gampong-n8n
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5678:5678"
+  #   environment:
+  #     - N8N_HOST=localhost
+  #     - N8N_PORT=5678
+  #     - N8N_PROTOCOL=http
+  #     - WEBHOOK_URL=http://localhost:5678/
+  #   volumes:
+  #     - n8n_data:/home/node/.n8n
+  #   networks:
+  #     - gampong-net
+
+  # evolution-api:
+  #   image: atendai/evolution-api:v2.1.1
+  #   container_name: gampong-evolution
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - SERVER_URL=http://localhost:8080
+  #     - AUTH_TYPE=apikey
+  #     - GLOBAL_API_KEY=KUNCI_RAHASIA_EVOLUTION_ANDA
+  #   volumes:
+  #     - evolution_data:/evolution/instances
+  #   networks:
+  #     - gampong-net
+
+networks:
+  gampong-net:
+    driver: bridge
+
+# Menyimpan data persisten untuk N8N dan Evolution API
+volumes:
+  n8n_data:
+  evolution_data:

@@ -69,7 +69,7 @@ export async function GET() {
     });
     
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'load' });
     
     // 4. Generate PDF buffer
     const pdfBuffer = await page.pdf({
@@ -81,7 +81,7 @@ export async function GET() {
     await browser.close();
 
     // 5. Kembalikan PDF ke Client
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="Laporan_Gampong.pdf"',

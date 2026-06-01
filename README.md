@@ -66,5 +66,38 @@ Pastikan Anda telah menginstal:
 
 1. **Kloning Repositori**
 ```bash
-   git clone [https://github.com/username/gampong-alert-hub.git](https://github.com/username/gampong-alert-hub.git)
-   cd gampong-alert-hub
+   git clone https://github.com/nightcoders-studio/ach-14.git
+   cd ach-14
+```
+
+2. **Konfigurasi Environment**
+   Salin template `.env` dan isi variabel rahasia Anda:
+```bash
+   cp .env.example .env
+```
+
+3. **Menjalankan dengan Docker Compose (Direkomendasikan)**
+   Kami telah menyertakan konfigurasi `Dockerfile` (Node 22 LTS, Multi-stage) dan `docker-compose.yml` untuk lingkungan *Production-ready*.
+```bash
+   # Jalankan arsitektur penuh (Next.js, PostgreSQL, Cron) di background
+   docker compose up -d --build
+```
+
+4. **Menjalankan tanpa Docker (Local Dev)**
+```bash
+   # Install dependencies (menggunakan pnpm)
+   pnpm install
+
+   # Setup database Prisma
+   pnpm prisma:generate
+   pnpm prisma:migrate
+
+   # Jalankan server
+   pnpm run dev
+```
+
+---
+
+## 📖 Dokumentasi Lengkap
+Untuk panduan instalasi server *Production* secara mendetail, integrasi dengan n8n, dan tata cara *scan* QR Code Evolution API, silakan merujuk ke panduan komprehensif kami:
+👉 **[Deployment Guide](./Docs/DEPLOYMENT_GUIDE.md)**

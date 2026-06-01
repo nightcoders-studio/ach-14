@@ -12,6 +12,7 @@ export const auth = betterAuth({
     }),
     emailAndPassword: {
         enabled: true,
+        minPasswordLength: 6,
         requireEmailVerification: true,
         sendResetPassword: async ({ user, url, token }: { user: any, url: string, token: string }, request?: any) => {
             if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "masukkan_resend_api_key_anda_disini") {

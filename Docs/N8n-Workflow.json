@@ -1,0 +1,145 @@
+{
+  "name": "Menerima Laporan Warga (Evolution API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-messages",
+        "options": {}
+      },
+      "id": "270f9b6b-80a2-4a0b-8d76-1b5e5a2c2222",
+      "name": "Webhook Evolution API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nif (!body || !body.data || body.data.length === 0) return [];\n\nconst msgData = body.data[0];\nconst messageType = msgData.messageType;\nconst fromMe = msgData.key.fromMe;\nconst phone = msgData.key.remoteJid;\n\n// 1. Hanya proses pesan text yang bukan dari bot sendiri dan bukan dari grup\nif (fromMe || phone.includes('@g.us') || (messageType !== 'conversation' && messageType !== 'extendedTextMessage')) return [];\n\nconst text = msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || '';\n\n// 2. Format laporan: LAPOR [JENIS] [LOKASI] - [DESKRIPSI]\n// Contoh: LAPOR KEBAKARAN Pasar Inpres - Api mulai membesar\nif (!text.toUpperCase().startsWith('LAPOR')) return [];\n\n// 3. Parsing sederhana\nconst parts = text.split(' ');\nconst type = parts.length > 1 ? parts[1].toUpperCase() : 'LAINNYA';\nlet description = text.substring(text.indexOf(type) + type.length).trim();\nlet location = 'Tidak Spesifik';\n\nif (description.includes('-')) {\n  const descParts = description.split('-');\n  location = descParts[0].trim();\n  description = descParts.slice(1).join('-').trim();\n}\n\nreturn [{\n  json: {\n    phone: phone.replace('@s.whatsapp.net', ''),\n    type: type,\n    description: description,\n    location: location,\n    raw_text: text\n  }\n}];"
+      },
+      "id": "f516a2d9-1ab3-4e4c-9f87-2dc9f3b14444",
+      "name": "Filter & Parse Laporan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/webhooks/reports",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer gampong_alert_webhook_2026_xyz"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "type",
+              "value": "={{ $json.type }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.description }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e458e0a2-bbab-4e3a-b8fb-455b9e023333",
+      "name": "Kirim ke API Aplikasi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/message/sendText/Hackathon",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "GLOBAL_API_KEY_ANDA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Filter & Parse Laporan').item.json.phone }}\",\n  \"text\": \"✅ Laporan Anda telah diterima sistem dengan ID Laporan: *{{ $json.data.id }}*.\\n\\nTerima kasih, pihak Gampong akan segera menindaklanjuti laporan Anda.\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  }\n}",
+        "options": {}
+      },
+      "id": "2bc84fb2-c438-4e4b-91cc-d1fc1e041111",
+      "name": "Balas WA (Sukses)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        920,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Evolution API": {
+      "main": [
+        [
+          {
+            "node": "Filter & Parse Laporan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter & Parse Laporan": {
+      "main": [
+        [
+          {
+            "node": "Kirim ke API Aplikasi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kirim ke API Aplikasi": {
+      "main": [
+        [
+          {
+            "node": "Balas WA (Sukses)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c869e9c3-f00e-44b4-a212-3b03657cdeaa"
+}

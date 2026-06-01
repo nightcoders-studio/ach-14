@@ -113,10 +113,8 @@ export default function ReportsClient({ initialReports }: { initialReports: Repo
                     <div className="flex items-center gap-1">
                       {getStatusBadge(report.status)}
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 ml-1" disabled={isPending}>
-                            <MoreVertical className="w-4 h-4 text-zinc-500" />
-                          </Button>
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 h-8 w-8 ml-1" disabled={isPending}>
+                          <MoreVertical className="w-4 h-4 text-zinc-500" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleUpdateStatus(report.id, "PENDING")}>Tandai Menunggu</DropdownMenuItem>

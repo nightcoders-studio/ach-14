@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Settings, MessageCircle, Save, CheckCircle2, Zap, Server, Shield, Globe, BellRing, Webhook } from "lucide-react";
 import { updateSettings } from "@/app/actions/settings";
+import { checkEvolutionConnection, getEvolutionQRCode, testEvolutionMessage } from "@/app/actions/evolution";
 
 export default function SettingsClient({ initialSettings }: { initialSettings: Record<string, string> }) {
   const [activeCategory, setActiveCategory] = useState<"GENERAL" | "MESSAGING" | "PUBLIC_APIS" | "ALERT_PARAMS">("GENERAL");
@@ -16,6 +17,81 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
   const [isPending, startTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(false);
   const [settings, setSettings] = useState(initialSettings);
+  
+  const [evoStatus, setEvoStatus] = useState<string | null>(null);
+  const [evoQr, setEvoQr] = useState<string | null>(null);
+  const [isCheckingEvo, setIsCheckingEvo] = useState(false);
+  const [isGettingQr, setIsGettingQr] = useState(false);
+  const [isTestingEvo, setIsTestingEvo] = useState(false);
+  const [evoError, setEvoError] = useState<string | null>(null);
+
+  const handleCheckEvo = async () => {
+    setIsCheckingEvo(true);
+    setEvoError(null);
+    setEvoQr(null);
+    try {
+      const res = await checkEvolutionConnection();
+      if (res.success) {
+        setEvoStatus(res.state || "unknown");
+      } else {
+        setEvoError(res.error || "Gagal cek status");
+        setEvoStatus("error");
+      }
+    } catch (e: any) {
+      setEvoError(e.message || "Terjadi kesalahan");
+    } finally {
+      setIsCheckingEvo(false);
+    }
+  };
+
+  const handleGetQr = async () => {
+    setIsGettingQr(true);
+    setEvoError(null);
+    try {
+      const res = await getEvolutionQRCode();
+      if (res.success && res.base64) {
+        setEvoQr(res.base64);
+        
+        // Cek status secara berkala setiap 3 detik jika QR sudah tampil
+        const interval = setInterval(async () => {
+          const check = await checkEvolutionConnection();
+          if (check.success && ["open", "connected", "CONNECTED"].includes(check.state as string)) {
+            setEvoStatus(check.state as string);
+            clearInterval(interval);
+          }
+        }, 3000);
+        
+        // Hentikan interval setelah 60 detik
+        setTimeout(() => clearInterval(interval), 60000);
+      } else {
+        setEvoError(res.error || "Gagal mendapatkan QR Code");
+      }
+    } catch (e: any) {
+      setEvoError(e.message || "Terjadi kesalahan");
+    } finally {
+      setIsGettingQr(false);
+    }
+  };
+
+  const handleTestEvo = async () => {
+    const phone = window.prompt("Masukkan nomor HP tujuan untuk tes (format: 628...):");
+    if (!phone) return;
+    
+    setIsTestingEvo(true);
+    setEvoError(null);
+    try {
+      const res = await testEvolutionMessage(phone);
+      if (res.success) {
+        window.alert("Berhasil! Pesan tes telah dikirim.");
+      } else {
+        setEvoError(res.error || "Gagal mengirim tes");
+      }
+    } catch (e: any) {
+      setEvoError(e.message || "Terjadi kesalahan");
+    } finally {
+      setIsTestingEvo(false);
+    }
+  };
 
   const handleSettingChange = (key: string, value: string) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -302,6 +378,78 @@ export default function SettingsClient({ initialSettings }: { initialSettings: R
                           onChange={(e) => handleSettingChange("EVOLUTION_GLOBAL_KEY", e.target.value)} 
                           placeholder="Masukkan kunci global Evolution..." 
                         />
+                      </div>
+                      
+                      <div className="pt-6 mt-4 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <h4 className="text-sm font-semibold">Status Koneksi WhatsApp</h4>
+                            <p className="text-xs text-zinc-500">Pastikan instance aktif dan terhubung.</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleCheckEvo} 
+                            disabled={isCheckingEvo}
+                            className="shrink-0"
+                          >
+                            {isCheckingEvo ? "Mengecek..." : "Cek Status Koneksi"}
+                          </Button>
+                        </div>
+                        
+                        {evoError && (
+                          <div className="p-3 bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 text-sm rounded-md border border-red-200 dark:border-red-900">
+                            {evoError}
+                          </div>
+                        )}
+                        
+                        {evoStatus && !evoError && (
+                          <div className="flex flex-col items-center justify-center p-6 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                            {["open", "connected", "CONNECTED"].includes(evoStatus) ? (
+                              <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-2">
+                                <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                                </div>
+                                <h5 className="font-medium text-green-600 dark:text-green-400">Terhubung (CONNECTED)</h5>
+                                <p className="text-xs text-zinc-500 mb-2">Instance Evolution API siap mengirim dan menerima pesan.</p>
+                                <div className="pt-2">
+                                  <Button variant="outline" size="sm" onClick={handleTestEvo} disabled={isTestingEvo} className="bg-white dark:bg-zinc-950">
+                                    {isTestingEvo ? "Mengirim..." : "Kirim Pesan Tes"}
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            ) : (
+                              <div className="text-center space-y-4 w-full">
+                                <div className="space-y-2">
+                                  <Badge variant="outline" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                                    Status: {evoStatus.toUpperCase()}
+                                  </Badge>
+                                  <p className="text-sm text-zinc-500">WhatsApp belum terhubung ke instance ini.</p>
+                                </div>
+                                
+                                {evoQr ? (
+                                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4 pt-2">
+                                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-zinc-200">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={evoQr} alt="WhatsApp QR Code" className="w-56 h-56" />
+                                    </div>
+                                    <p className="text-xs text-zinc-500 max-w-[280px]">
+                                      Buka WhatsApp di HP Anda &gt; Tautkan Perangkat &gt; Scan QR Code ini. (QR otomatis dicek dalam 60 detik)
+                                    </p>
+                                  </motion.div>
+                                ) : (
+                                  <Button 
+                                    onClick={handleGetQr} 
+                                    disabled={isGettingQr}
+                                    className="w-full sm:w-auto"
+                                  >
+                                    {isGettingQr ? "Memuat QR Code..." : "Dapatkan QR Code"}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

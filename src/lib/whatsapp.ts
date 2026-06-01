@@ -1,7 +1,4 @@
-/**
- * WhatsApp Messaging Service
- * Terintegrasi dengan Fonnte API (atau Evolution API)
- */
+import prisma from "@/lib/prisma";
 
 export interface WhatsAppResponse {
   success: boolean;
@@ -10,46 +7,78 @@ export interface WhatsAppResponse {
 }
 
 export async function sendWhatsAppMessage(targetNumbers: string[], message: string): Promise<WhatsAppResponse> {
-  const API_KEY = process.env.FONNTE_API_KEY;
-  const API_URL = "https://api.fonnte.com/send"; // Bisa diganti ke endpoint Evolution API
-
-  // Jika tidak ada API KEY, kita jalankan Mode Simulasi (Mock)
-  if (!API_KEY) {
-    console.log("🛠️ [MOCK WHATSAPP] Memulai siaran simulasi...");
-    console.log(`📡 Target: ${targetNumbers.join(", ")}`);
-    console.log(`✉️ Pesan:\n${message}`);
-    console.log("✅ [MOCK WHATSAPP] Siaran simulasi berhasil dikirim.");
-    return { success: true, detail: "SIMULATED_SUCCESS" };
-  }
-
   try {
-    // Fonnte mendukung pengiriman masal dengan memisahkan nomor menggunakan koma
-    const targets = targetNumbers.join(",");
-
-    const formData = new FormData();
-    formData.append("target", targets);
-    formData.append("message", message);
-    formData.append("delay", "2"); // Jeda 2 detik antar pesan agar tidak diblokir WhatsApp
-
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: API_KEY,
-      },
-      body: formData,
+    // 1. Ambil konfigurasi dari database
+    const settingsRaw = await prisma.systemSetting.findMany({
+      where: { 
+        key: { 
+          in: ["EVOLUTION_API_URL", "EVOLUTION_INSTANCE_NAME", "EVOLUTION_GLOBAL_KEY"] 
+        } 
+      }
     });
+    
+    const settings = settingsRaw.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
 
-    const data = await response.json();
+    const url = settings["EVOLUTION_API_URL"]?.replace(/\/$/, "");
+    const instance = settings["EVOLUTION_INSTANCE_NAME"];
+    const apiKey = settings["EVOLUTION_GLOBAL_KEY"];
 
-    if (data.status) {
-      console.log(`✅ [WHATSAPP] Berhasil mengirim pesan ke ${targetNumbers.length} nomor.`);
-      return { success: true, detail: "SENT", ids: data.id };
-    } else {
-      console.error(`❌ [WHATSAPP ERROR] Fonnte API Error:`, data.reason);
-      return { success: false, detail: data.reason };
+    // 2. Jika tidak ada API KEY, jalankan Mode Simulasi (Mock)
+    if (!url || !instance || !apiKey) {
+      console.log("🛠️ [MOCK WHATSAPP] Memulai siaran simulasi (Evolution API belum dikonfigurasi)...");
+      console.log(`📡 Target: ${targetNumbers.join(", ")}`);
+      console.log(`✉️ Pesan:\n${message}`);
+      return { success: true, detail: "SIMULATED_SUCCESS_NO_CONFIG" };
     }
+
+    // 3. Kirim via Evolution API secara berurutan agar tidak diblokir
+    console.log(`🚀 [EVOLUTION API] Memulai pengiriman ke ${targetNumbers.length} nomor...`);
+    let successCount = 0;
+    
+    for (const number of targetNumbers) {
+      try {
+        // Pastikan nomor berformat internasional (628...)
+        let formattedNumber = number.replace(/\D/g, "");
+        if (formattedNumber.startsWith("08")) {
+          formattedNumber = "628" + formattedNumber.substring(2);
+        }
+
+        const response = await fetch(`${url}/message/sendText/${instance}`, {
+          method: "POST",
+          headers: { 
+            "apikey": apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            number: formattedNumber,
+            text: message,
+            options: {
+              delay: 1200,
+              presence: "composing"
+            }
+          }),
+        });
+        
+        if (response.ok) {
+          successCount++;
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          console.error(`❌ Gagal mengirim ke ${formattedNumber}, status: ${response.status}, error:`, errData);
+        }
+      } catch (err: any) {
+        console.error(`❌ Gagal mengirim ke ${number}:`, err.message);
+      }
+    }
+
+    console.log(`✅ [EVOLUTION API] Selesai. Berhasil mengirim pesan ke ${successCount}/${targetNumbers.length} nomor.`);
+    return { success: true, detail: `SENT_${successCount}` };
+
   } catch (error: any) {
-    console.error(`❌ [WHATSAPP CATCH] Terjadi kesalahan saat fetch API:`, error.message);
+    console.error(`❌ [WHATSAPP CATCH] Terjadi kesalahan:`, error.message);
     return { success: false, detail: error.message };
   }
 }
+

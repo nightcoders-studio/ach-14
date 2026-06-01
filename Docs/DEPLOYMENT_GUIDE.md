@@ -190,6 +190,20 @@ services:
     ports:
       - "3000:3000"
 
+  # ===== Internal Cron Job =====
+  cron:
+    image: alpine:latest
+    container_name: gah-cron
+    restart: unless-stopped
+    depends_on:
+      - nextjs
+    networks:
+      - default
+    command: >
+      sh -c "apk add --no-cache curl &&
+      echo '*/15 * * * * curl -X POST http://nextjs:3000/api/cron' > /var/spool/cron/crontabs/root &&
+      crond -f -l 2"
+
   # ===== n8n Workflow Engine =====
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
